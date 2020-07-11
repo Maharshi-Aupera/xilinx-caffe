@@ -79,10 +79,10 @@ def GenerateAnnotation(image_name = None,
         sex_mask = [0] * 2
     # age regression
     if age != None:
-        age_mask = [1] * 2
+        age_mask = [1]
     else:
         age = [0]
-        age_mask = [0] * 2
+        age_mask = [0]
     return (image_name, points, points_mask, sex, sex_mask, age, age_mask)
 
 def IndexGenerate(L, phase):
@@ -110,8 +110,7 @@ class DataLoader(object):
         fp.close()
         for line in lines:
             line = line.strip('\n').split(' ')
-            print("Hello -------------------------------------- >>>")
-            image_name = align_dataset_root + line[0] #+ '.jpg'
+            image_name = align_dataset_root + line[0] + '.jpg'
             points = np.array(line[1:], dtype = np.float).tolist()
             assert os.path.exists(image_name)
             self.annotation_list.append(GenerateAnnotation(image_name = image_name,
@@ -128,11 +127,11 @@ class DataLoader(object):
             if re.match('\d+_\d+_\d+.jpg\n', line):
                 line = line.strip('\n')[:-4].split('_')
                 sex = [int(line[2])]
-                age = [int(line[1])]
+                age = [float(line[1])]
             elif re.match(u'[\dA-Z]+_[12]{1}_\d{1,2}_[01]{1}.jpg\n', line):
                 line = line.strip()[:-4].split('_')
                 sex = [int(line[3])]
-                age = [int(line[2])]
+                age = [float(line[2])]
             else:
                 assert 0
             assert os.path.exists(image_name)
@@ -147,8 +146,6 @@ class DataLoader(object):
         annotation = self.annotation_list[index]
         img_name = annotation[0]
         img = cv2.imread(img_name)
-        # img = img.astype(np.float)
-        # img = cv2.reshape(img, (72, 96))
         assert img.shape == self.im_shape
         img = img.astype(np.float)
         img = img.transpose(2, 0, 1)
@@ -159,18 +156,15 @@ class DataLoader(object):
         points = copy.deepcopy(annotation[1])
         points_mask = copy.deepcopy(annotation[2])
         for i in range(5):
-            points[i] = points[i]
-            points[i + 5] = points[i + 5]
-#            points[i] = points[i] / float(self.im_shape[1])
-#            points[i + 5] = points[i + 5] / float(self.im_shape[0])
+            points[i] = points[i] / float(self.im_shape[1])
+            points[i + 5] = points[i + 5] / float(self.im_shape[0])
         # sex
         sex = copy.deepcopy(annotation[3])
         sex_mask = copy.deepcopy(annotation[4])
         # age
         age = copy.deepcopy(annotation[5])
         age_mask = copy.deepcopy(annotation[6])
-#        age[0] = age[0]
-#        age[0] = age[0] / float(60.)
+        age[0] = age[0] / float(60.)
         # return
         return img, points, points_mask, sex, sex_mask, age, age_mask
 
@@ -178,9 +172,9 @@ class AttrDataLayer(caffe.Layer):
     def setup(self, bottom, top):
         # batch_size, align_dataset_root, align_dataset_file, sex_age_dataset_root, sex_age_dataset_file different in train and test
         # self.phase TRAIN = 0, TEST = 1
-        self.batch_size = [2, 1][self.phase]
+        self.batch_size = [128, 568][self.phase]
         params_str = eval(self.param_str)
-        print("Hi")
+
         align_dataset_root = [params_str['landmark_train_path']+'/', params_str['landmark_test_path']+'/'][self.phase]
         align_dataset_file = [params_str['landmark_train_list'], params_str['landmark_test_list']][self.phase]
         sex_age_dataset_root = [params_str['age_sex_train_path']+'/', params_str['age_sex_test_path']+'/'][self.phase]
@@ -194,7 +188,7 @@ class AttrDataLayer(caffe.Layer):
         top[3].reshape(self.batch_size, 1)
         top[4].reshape(self.batch_size, 2)
         top[5].reshape(self.batch_size, 1)
-        top[6].reshape(self.batch_size, 2)
+        top[6].reshape(self.batch_size, 1)
 
     def reshape(self, bottom, top):
         pass
